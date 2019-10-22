@@ -17,4 +17,4 @@ class DH:
         return self.sharedKey
 
     def toString(self):
-        print("Sec key", self.secretKey, "shared key", self.sharedKey)
+        print("secret key -", self.secretKey, ", shared key -", self.sharedKey)
