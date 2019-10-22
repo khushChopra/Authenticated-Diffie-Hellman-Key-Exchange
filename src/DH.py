@@ -1,9 +1,11 @@
 class DH:
-    def __init__(self, secretKey):
+    def __init__(self, secretKey, receivedKey=None):
         self.sharedPrime = 564
         self.sharedBase = 78
         self.secretKey = secretKey
         self.sharedKey = None
+        if receivedKey:
+            self.computeSharedKey(receivedKey)
 
     def getPublicKey(self):
         return (self.sharedBase**self.secretKey)%self.sharedPrime
@@ -13,3 +15,6 @@ class DH:
     
     def getSharedKey(self):
         return self.sharedKey
+
+    def toString(self):
+        print("Sec key", self.secretKey, "shared key", self.sharedKey)
