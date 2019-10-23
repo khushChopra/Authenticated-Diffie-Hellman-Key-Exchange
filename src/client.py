@@ -1,17 +1,45 @@
 import socket, sys, threading, json
 from DH import DH
 from encrypter import *
+from keyController import *
 
 class Client:
-    def __init__(self, myPort, mySecretKey, myName):
+    def __init__(self, myPort, mySecretKey, myName, addressOfPublicServer=10009):
         self.myName = myName
         self.myPort = myPort
         self.mySecretKey = mySecretKey
+        self.addressOfPublicServer = addressOfPublicServer
+        self.signaturePublicKey, self.signaturePrivateKey = getKeys()
         self.connections = {}
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('localhost',self.myPort))
+        self.registerToNetwork()
         self.receiveThread = threading.Thread(target=self.receiveThreadFunction, name=self.myName)
         self.receiveThread.start()
+        self.currentNewConnectionPublicKey = None
+
+    # registers to network // sends public key to public
+    def registerToNetwork(self):
+        print("Registering to network")
+        messageDict = {"type": "register", "signaturePublicKey":serializeKey(self.signaturePublicKey), "name": self.myName}
+        self.sock.sendto(self.dictToBinary(messageDict), ("localhost",self.addressOfPublicServer))
+        print("Done")
+
+    # get signaturePublicKey
+    def getPublicKeyForNewConnection(self, connectionPort):
+        receiverThread = threading.Thread(target=self.receiveFromPublicThreadFunction, name="signature receiver thread")
+        receiverThread.start()
+        messageDict = {"type": "verify", "entityAddress": connectionPort}
+        self.sock.sendto(self.dictToBinary(messageDict), ('localhost',self.addressOfPublicServer))
+        receiverThread.join()
+
+    def receiveFromPublicThreadFunction(self):
+        while True:
+            data, recvAddress = self.sock.recvfrom(4096)
+            dataDict = self.binaryToDict(data)
+            if dataDict["type"]=="receiveSignaturePublicKey":
+                self.currentNewConnectionPublicKey = dataDict["signaturePublicKey"]
+                break
 
     # receive encrypted message
     def messageReceived(self, connectionPort, dataDict):
@@ -22,6 +50,14 @@ class Client:
 
     # receive key
     def keyReceived(self, connectionPort, dataDict):
+        digitalSignature = dataDict["digitalSignature"]
+        self.getPublicKeyForNewConnection(connectionPort)
+        publicKey = dataDict["publicKey"]
+
+        print("Key received from -", connectionPort, ", digitalSignature -",digitalSignature, ", public key -", publicKey,", signaturePublicKey -", self.currentNewConnectionPublicKey)
+        if self.getMessageFromDigitalSignature(digitalSignature, self.currentNewConnectionPublicKey) != publicKey:
+            print("Error - unexpected behaviour")                           
+
         if connectionPort in self.connections:
             # connection port in dictionary
             self.connections[connectionPort]["dh"].computeSharedKey(dataDict["publicKey"])
@@ -62,7 +98,8 @@ class Client:
 
     # send shared key to all
     def sendKeyToConnection(self, connectionPort, requestKey=False):
-        messageDict = {"type": "key", "name": self.myName, "publicKey": self.connections[connectionPort]["dh"].getPublicKey(), "requestKey": requestKey}
+        digitalSignature = self.generateDigitalSignature(connectionPort)
+        messageDict = {"type": "key", "name": self.myName, "publicKey": self.connections[connectionPort]["dh"].getPublicKey(), "requestKey": requestKey, "digitalSignature":digitalSignature}
         self.sock.sendto(self.dictToBinary(messageDict),('localhost',connectionPort))
 
     # send encrypted message
@@ -81,18 +118,27 @@ class Client:
             messageDict = {"type": "message","name": self.myName, "message": encryptedMessage}
             self.sock.sendto(self.dictToBinary(messageDict),('localhost',connectionPort))
 
-    # coneection status
+    # region utility functions
+    def generateDigitalSignature(self, connectionPort):
+        publicKey = self.connections[connectionPort]["dh"].getPublicKey()
+        publicKey = str(publicKey).encode()
+        return encrypt(publicKey, self.signaturePrivateKey)
+
+    def getMessageFromDigitalSignature(self, digitalSignature, key):
+        message = decrypt(digitalSignature, key)
+        return int(message.decode())
+
     def connectionsStatus(self):
         print("No. of connections -", len(self.connections))
         for conn in self.connections:
             print("    Connection name -",self.connections[conn]["name"], end=", ")
             self.connections[conn]["dh"].toString()
             
-    # utilities
     def dictToBinary(self, inputDict):
         tempJSON = json.dumps(inputDict)
         return str.encode(tempJSON)
     
     def binaryToDict(self, inputBinary):
         tempJSON = inputBinary.decode()
-        return json.loads(tempJSON)
+        return json.loads(tempJSON) 
+    # endregion
