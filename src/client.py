@@ -10,6 +10,7 @@ class Client:
         self.myName = myName
         self.myPort = myPort
         self.mySecretKey = mySecretKey
+        self.myDH = DH(self.mySecretKey)
         self.addressOfPublicServer = addressOfPublicServer
         self.signaturePublicKey, self.signaturePrivateKey = getKeys()          ## as strings
         self.connections = {}
@@ -19,11 +20,13 @@ class Client:
         self.receiveThread = threading.Thread(target=self.receiveThreadFunction, name=self.myName)
         self.receiveThread.start()
         self.currentNewConnectionPublicKey = None
+        self.networkActivityLoggerPort = 10010
 
     # registers to network // sends public key to public
     def registerToNetwork(self):
         print("Registering to network")
         messageDict = {"type": "register", "signaturePublicKey":self.signaturePublicKey, "name": self.myName}
+        self.logNetworkActivity(messageDict)
         self.sock.sendto(self.dictToBinary(messageDict), ("localhost",self.addressOfPublicServer))
         print("Done")
 
@@ -32,6 +35,7 @@ class Client:
         receiverThread = threading.Thread(target=self.receiveFromPublicThreadFunction, name="signature receiver thread")
         receiverThread.start()
         messageDict = {"type": "verify", "entityAddress": connectionPort}
+        self.logNetworkActivity(messageDict)
         self.sock.sendto(self.dictToBinary(messageDict), ('localhost',self.addressOfPublicServer))
         receiverThread.join()
 
@@ -59,7 +63,7 @@ class Client:
         #print("Key received from -", connectionPort, ", digitalSignature -",digitalSignature, ", public key -", publicKey,", signaturePublicKey -", self.currentNewConnectionPublicKey)
         print("for debug " ,decryptor(digitalSignature, self.currentNewConnectionPublicKey),connectionPort)
 
-        if decryptor(digitalSignature, self.currentNewConnectionPublicKey) != connectionPort:
+        if decryptor(digitalSignature, self.currentNewConnectionPublicKey) != publicKey:
             print("Error - unexpected behaviour")    
             return                       
 
@@ -103,12 +107,12 @@ class Client:
 
     # send shared key to all
     def sendKeyToConnection(self, connectionPort, requestKey=False):
-        digitalSignature = self.generateDigitalSignature(self.myPort)
+        digitalSignature = self.generateDigitalSignature(self.myDH.getPublicKey())
         messageDict = {"type": "key", "name": self.myName, "publicKey": self.connections[connectionPort]["dh"].getPublicKey(), "requestKey": requestKey, "digitalSignature":digitalSignature}
         
-        for _ in messageDict.keys():
-            print(type(messageDict[_]))
-        
+        # for _ in messageDict.keys():
+        #     print(type(messageDict[_]))
+        self.logNetworkActivity(messageDict)
         self.sock.sendto(self.dictToBinary(messageDict),('localhost',connectionPort))
 
     # send encrypted message
@@ -125,9 +129,16 @@ class Client:
             # shared key available
             encryptedMessage = encrypt(message, self.connections[connectionPort]["dh"].getSharedKey())
             messageDict = {"type": "message","name": self.myName, "message": encryptedMessage}
+            self.logNetworkActivity(messageDict)
             self.sock.sendto(self.dictToBinary(messageDict),('localhost',connectionPort))
 
     # region utility functions
+    def logNetworkActivity(self, message):
+        if type(message) is type({1:1}):
+            self.sock.sendto(self.dictToBinary(message), ("localhost", 10010))
+        else:
+            self.sock.sendto(message, ("localhost", 10010))
+
     def generateDigitalSignature(self, connectionPort):
         return encryptor(connectionPort, self.signaturePrivateKey)
 

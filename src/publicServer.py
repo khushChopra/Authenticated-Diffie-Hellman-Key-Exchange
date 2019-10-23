@@ -1,6 +1,4 @@
-import socket, sys, threading, json
-
-import pickle
+import socket, sys, threading, json, pickle
 
 PORT = 10009
 
@@ -33,6 +31,7 @@ while True:
         # receives {"type": "verify", "entityAddress": /address/}
         print("Received verification request from", recvPort)
         messageDict = {"type":"receiveSignaturePublicKey", "signaturePublicKey":publicKeys[dataDict["entityAddress"]]}
+        sock.sendto(dictToBinary(messageDict),('localhost',10010))
         sock.sendto(dictToBinary(messageDict),('localhost',recvPort))
         print("Response given -", messageDict)
         print()
