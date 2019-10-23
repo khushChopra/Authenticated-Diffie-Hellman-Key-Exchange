@@ -1,5 +1,7 @@
 import socket, sys, threading, json
 
+import pickle
+
 PORT = 10009
 
 publicKeys = {}
@@ -9,12 +11,12 @@ sock.bind(('localhost',PORT))
 
 # region utility functions
 def dictToBinary(inputDict):
-    tempJSON = json.dumps(inputDict)
-    return str.encode(tempJSON)
+    tempJSON = pickle.dumps(inputDict)
+    return tempJSON
 
 def binaryToDict(inputBinary):
-    tempJSON = inputBinary.decode()
-    return json.loads(tempJSON)
+    # tempJSON = inputBinary.decode()
+    return pickle.loads(inputBinary)
 # endregion
 
 while True:

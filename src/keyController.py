@@ -5,6 +5,7 @@ from binascii import hexlify
 import base64
 
 # int to serializable using serialized keys
+# input key is the private key
 def encryptor(message, key):
     key = RSA.import_key(key)
     cipher = PKCS1_OAEP.new(key=key)
@@ -12,13 +13,15 @@ def encryptor(message, key):
     return base64.encodebytes(cipher_text)
 
 # serializable to int using serialized keys
+# this is done with public key
 def decryptor(message, key):
     key = RSA.import_key(key)
     decryptObj = PKCS1_OAEP.new(key=key)
     # print(message)
     # message = message[2:][:-1]
     # print(message)
-    decrypted_message = decryptObj.decrypt(message.decode('ascii'))
+    # decrypted_message = decryptObj.decrypt(message.decode('ascii'))
+    decrypted_message = decryptObj.decrypt(base64.b64decode(message))
     return int(decrypted_message.decode())    
 
 # serializable keys

@@ -3,6 +3,8 @@ from DH import DH
 from encrypter import *
 from keyController import *
 
+import pickle
+
 class Client:
     def __init__(self, myPort, mySecretKey, myName, addressOfPublicServer=10009):
         self.myName = myName
@@ -55,6 +57,8 @@ class Client:
         publicKey = dataDict["publicKey"]
 
         #print("Key received from -", connectionPort, ", digitalSignature -",digitalSignature, ", public key -", publicKey,", signaturePublicKey -", self.currentNewConnectionPublicKey)
+        print("for debug " ,decryptor(digitalSignature, self.currentNewConnectionPublicKey),connectionPort)
+
         if decryptor(digitalSignature, self.currentNewConnectionPublicKey) != connectionPort:
             print("Error - unexpected behaviour")    
             return                       
@@ -99,8 +103,12 @@ class Client:
 
     # send shared key to all
     def sendKeyToConnection(self, connectionPort, requestKey=False):
-        digitalSignature = self.generateDigitalSignature(connectionPort)
+        digitalSignature = self.generateDigitalSignature(self.myPort)
         messageDict = {"type": "key", "name": self.myName, "publicKey": self.connections[connectionPort]["dh"].getPublicKey(), "requestKey": requestKey, "digitalSignature":digitalSignature}
+        
+        for _ in messageDict.keys():
+            print(type(messageDict[_]))
+        
         self.sock.sendto(self.dictToBinary(messageDict),('localhost',connectionPort))
 
     # send encrypted message
@@ -130,10 +138,10 @@ class Client:
             self.connections[conn]["dh"].toString()
             
     def dictToBinary(self, inputDict):
-        tempJSON = json.dumps(inputDict)
-        return str.encode(tempJSON)
+        tempJSON = pickle.dumps(inputDict)
+        return tempJSON
     
     def binaryToDict(self, inputBinary):
-        tempJSON = inputBinary.decode()
-        return json.loads(tempJSON) 
+        # tempJSON = inputBinary.decode()
+        return pickle.loads(inputBinary) 
     # endregion
