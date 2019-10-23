@@ -1,41 +1,30 @@
-import cryptography
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
+#Importing necessary modules
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from binascii import hexlify
+import base64
 
-def encrypt(message, key):
-    return key.encrypt(
-        message,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
+# int to serializable using serialized keys
+def encryptor(message, key):
+    key = RSA.import_key(key)
+    cipher = PKCS1_OAEP.new(key=key)
+    cipher_text = cipher.encrypt(str(message).encode())
+    return base64.encodebytes(cipher_text)
 
-def decrypt(message, key):
-    return key.decrypt(
-        message,
-        padding.OAEP(
-            mgf=padding.MGF1(algorithm=hashes.SHA256()),
-            algorithm=hashes.SHA256(),
-            label=None
-        )
-    )
+# serializable to int using serialized keys
+def decryptor(message, key):
+    key = RSA.import_key(key)
+    decryptObj = PKCS1_OAEP.new(key=key)
+    # print(message)
+    # message = message[2:][:-1]
+    # print(message)
+    decrypted_message = decryptObj.decrypt(message.decode('ascii'))
+    return int(decrypted_message.decode())    
 
-def serializeKey(key):
-    return key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()
-    )
-
+# serializable keys
 def getKeys():
-    privateKey = rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
-    )
-    publicKey = privateKey.public_key()
+    privateKey = RSA.generate(1024)
+    publicKey = privateKey.publickey()
+    privateKey = privateKey.export_key().decode()
+    publicKey = publicKey.export_key().decode()
     return (privateKey, publicKey)
-        

@@ -9,7 +9,7 @@ class Client:
         self.myPort = myPort
         self.mySecretKey = mySecretKey
         self.addressOfPublicServer = addressOfPublicServer
-        self.signaturePublicKey, self.signaturePrivateKey = getKeys()
+        self.signaturePublicKey, self.signaturePrivateKey = getKeys()          ## as strings
         self.connections = {}
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind(('localhost',self.myPort))
@@ -21,7 +21,7 @@ class Client:
     # registers to network // sends public key to public
     def registerToNetwork(self):
         print("Registering to network")
-        messageDict = {"type": "register", "signaturePublicKey":serializeKey(self.signaturePublicKey), "name": self.myName}
+        messageDict = {"type": "register", "signaturePublicKey":self.signaturePublicKey, "name": self.myName}
         self.sock.sendto(self.dictToBinary(messageDict), ("localhost",self.addressOfPublicServer))
         print("Done")
 
@@ -54,8 +54,8 @@ class Client:
         self.getPublicKeyForNewConnection(connectionPort)
         publicKey = dataDict["publicKey"]
 
-        print("Key received from -", connectionPort, ", digitalSignature -",digitalSignature, ", public key -", publicKey,", signaturePublicKey -", self.currentNewConnectionPublicKey)
-        if self.getMessageFromDigitalSignature(digitalSignature, self.currentNewConnectionPublicKey) != publicKey:
+        #print("Key received from -", connectionPort, ", digitalSignature -",digitalSignature, ", public key -", publicKey,", signaturePublicKey -", self.currentNewConnectionPublicKey)
+        if decryptor(digitalSignature, self.currentNewConnectionPublicKey) != publicKey:
             print("Error - unexpected behaviour")                           
 
         if connectionPort in self.connections:
@@ -121,12 +121,7 @@ class Client:
     # region utility functions
     def generateDigitalSignature(self, connectionPort):
         publicKey = self.connections[connectionPort]["dh"].getPublicKey()
-        publicKey = str(publicKey).encode()
-        return encrypt(publicKey, self.signaturePrivateKey)
-
-    def getMessageFromDigitalSignature(self, digitalSignature, key):
-        message = decrypt(digitalSignature, key)
-        return int(message.decode())
+        return encryptor(publicKey, self.signaturePrivateKey)
 
     def connectionsStatus(self):
         print("No. of connections -", len(self.connections))
