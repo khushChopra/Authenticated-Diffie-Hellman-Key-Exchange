@@ -55,8 +55,9 @@ class Client:
         publicKey = dataDict["publicKey"]
 
         #print("Key received from -", connectionPort, ", digitalSignature -",digitalSignature, ", public key -", publicKey,", signaturePublicKey -", self.currentNewConnectionPublicKey)
-        if decryptor(digitalSignature, self.currentNewConnectionPublicKey) != publicKey:
-            print("Error - unexpected behaviour")                           
+        if decryptor(digitalSignature, self.currentNewConnectionPublicKey) != connectionPort:
+            print("Error - unexpected behaviour")    
+            return                       
 
         if connectionPort in self.connections:
             # connection port in dictionary
@@ -120,8 +121,7 @@ class Client:
 
     # region utility functions
     def generateDigitalSignature(self, connectionPort):
-        publicKey = self.connections[connectionPort]["dh"].getPublicKey()
-        return encryptor(publicKey, self.signaturePrivateKey)
+        return encryptor(connectionPort, self.signaturePrivateKey)
 
     def connectionsStatus(self):
         print("No. of connections -", len(self.connections))
