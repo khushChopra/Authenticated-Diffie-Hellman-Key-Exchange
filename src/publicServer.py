@@ -1,4 +1,5 @@
 import socket, sys, threading, json, pickle
+from pprint import pprint
 
 PORT = 10009
 
@@ -26,12 +27,13 @@ while True:
         # receives {"type": "register", "signaturePublicKey":/key/, "name":/name/}
         publicKeys[recvPort]=dataDict["signaturePublicKey"]
         print("Receives public key from", dataDict["name"],", address -",recvPort)
-        print(publicKeys)              # debugging
+        # pprint(publicKeys)              # debugging
     if dataDict["type"]=="verify":
         # receives {"type": "verify", "entityAddress": /address/}
         print("Received verification request from", recvPort)
         messageDict = {"type":"receiveSignaturePublicKey", "signaturePublicKey":publicKeys[dataDict["entityAddress"]]}
         sock.sendto(dictToBinary(messageDict),('localhost',10010))
         sock.sendto(dictToBinary(messageDict),('localhost',recvPort))
-        print("Response given -", messageDict)
+        print("Response given -",end=" ")
+        pprint(messageDict)
         print()

@@ -61,7 +61,7 @@ class Client:
         publicKey = dataDict["publicKey"]
 
         #print("Key received from -", connectionPort, ", digitalSignature -",digitalSignature, ", public key -", publicKey,", signaturePublicKey -", self.currentNewConnectionPublicKey)
-        print("for debug " ,decryptor(digitalSignature, self.currentNewConnectionPublicKey),connectionPort)
+        # print("for debug " ,decryptor(digitalSignature, self.currentNewConnectionPublicKey),connectionPort)
 
         if decryptor(digitalSignature, self.currentNewConnectionPublicKey) != publicKey:
             print("Error - unexpected behaviour")    
